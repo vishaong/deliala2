@@ -1,7 +1,8 @@
-import { Credentials, Tracking } from '../types';
+import { Credentials, Tracking, NotificationSettings } from '../types';
 
 const CREDENTIALS_KEY = 'delivery_tracker_credentials';
 const TRACKINGS_KEY = 'delivery_tracker_trackings';
+const NOTIFICATION_SETTINGS_KEY = 'delivery_tracker_notification_settings';
 
 export const storage = {
   getCredentials(): Credentials | null {
@@ -51,6 +52,39 @@ export const storage = {
     const trackings = this.getTrackings();
     const filtered = trackings.filter(t => t.id !== id);
     this.saveTrackings(filtered);
+  },
+
+  getNotificationSettings(): NotificationSettings | null {
+    const stored = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+    if (!stored) {
+      // 기본값 반환
+      return {
+        slackWebhookUrl: '',
+        monitoringInterval: '30분',
+        notifyOnShippingDelay: true,
+        notifyOnShippingStart: false,
+        notifyOnDeliveryComplete: false,
+        notifyOnDeliveryException: false,
+        autoDeleteCompleted: true,
+      };
+    }
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return {
+        slackWebhookUrl: '',
+        monitoringInterval: '30분',
+        notifyOnShippingDelay: true,
+        notifyOnShippingStart: false,
+        notifyOnDeliveryComplete: false,
+        notifyOnDeliveryException: false,
+        autoDeleteCompleted: true,
+      };
+    }
+  },
+
+  saveNotificationSettings(settings: NotificationSettings): void {
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
   },
 };
 
