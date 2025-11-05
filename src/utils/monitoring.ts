@@ -255,7 +255,6 @@ export async function monitorAllTrackings(settings: NotificationSettings): Promi
 
   // 배송 완료된 송장 중 12시간 경과된 것들 삭제
   if (settings.autoDeleteCompleted) {
-    const now = new Date();
     const toDelete: string[] = [];
 
     trackings.forEach(tracking => {

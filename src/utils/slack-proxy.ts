@@ -10,7 +10,7 @@ export async function sendSlackMessageViaProxy(webhookUrl: string, message: stri
   try {
     // no-cors 모드를 사용하여 CORS 검사를 우회
     // 응답을 확인할 수는 없지만, 요청은 전송됩니다
-    const response = await fetch(webhookUrl, {
+    await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,5 +1,4 @@
 import { Credentials, Tracking } from '../types';
-import { registerTrackWebhook } from './api';
 
 /**
  * 델리버리 트래커 웹후크 등록
@@ -7,8 +6,8 @@ import { registerTrackWebhook } from './api';
  * 웹후크 등록은 하되 실제 콜백 처리는 주기적 모니터링으로 대체합니다.
  */
 export async function registerDeliveryTrackerWebhook(
-  credentials: Credentials,
-  tracking: Tracking
+  _credentials: Credentials,
+  _tracking: Tracking
 ): Promise<void> {
   // 브라우저 환경에서는 공개 콜백 URL을 제공할 수 없으므로
   // 웹후크 등록은 하지 않고, 주기적 모니터링으로 대체합니다.
@@ -51,7 +50,7 @@ export async function registerDeliveryTrackerWebhook(
  * 24시간마다 호출하여 웹후크를 계속 유지합니다.
  */
 export async function refreshWebhookExpiration(
-  credentials: Credentials,
+  _credentials: Credentials,
   tracking: Tracking
 ): Promise<void> {
   if (!tracking.webhookRegistered) {
