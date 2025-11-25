@@ -3,18 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { storage } from '../utils/storage';
 import { sendSlackMessage, formatSlackMessage } from '../utils/slack';
 import { NotificationSettings, MonitoringInterval } from '../types';
-
-const MONITORING_INTERVALS: MonitoringInterval[] = [
-  '5분',
-  '10분',
-  '30분',
-  '1시간',
-  '2시간',
-  '4시간',
-  '8시간',
-  '12시간',
-  '24시간',
-];
+import { CredentialsSection } from '../components/settings/CredentialsSection';
+import { SlackSection } from '../components/settings/SlackSection';
+import { MonitoringSection } from '../components/settings/MonitoringSection';
+import { NotificationSection } from '../components/settings/NotificationSection';
+import { AutoDeleteSection } from '../components/settings/AutoDeleteSection';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -27,7 +20,7 @@ export default function SettingsPage() {
   const [notifyOnDeliveryComplete, setNotifyOnDeliveryComplete] = useState(false);
   const [notifyOnDeliveryException, setNotifyOnDeliveryException] = useState(false);
   const [autoDeleteCompleted, setAutoDeleteCompleted] = useState(true);
-  
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [testingSlack, setTestingSlack] = useState(false);
@@ -102,7 +95,7 @@ export default function SettingsPage() {
         '테스트 상태',
         '이것은 테스트 메시지입니다.'
       );
-      
+
       await sendSlackMessage(slackWebhookUrl, testMessage);
       setSuccess('슬랙 테스트 메시지가 전송되었습니다!');
     } catch (err) {
@@ -113,9 +106,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ 
-      maxWidth: '800px', 
-      margin: '0 auto', 
+    <div style={{
+      maxWidth: '800px',
+      margin: '0 auto',
       padding: '2rem',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
@@ -136,241 +129,47 @@ export default function SettingsPage() {
         </button>
         <h1 style={{ margin: 0 }}>설정</h1>
       </div>
-      
+
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {/* 델리버리 트래커 크레덴셜 */}
-        <section style={{ 
-          backgroundColor: '#f8f9fa', 
-          padding: '1.5rem', 
-          borderRadius: '8px' 
-        }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>델리버리 트래커 크레덴셜</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label htmlFor="clientId" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                Client ID
-              </label>
-              <input
-                id="clientId"
-                type="text"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem'
-                }}
-                placeholder="델리버리 트래커 Client ID를 입력하세요"
-              />
-            </div>
+        <CredentialsSection
+          clientId={clientId}
+          clientSecret={clientSecret}
+          onClientIdChange={setClientId}
+          onClientSecretChange={setClientSecret}
+        />
 
-            <div>
-              <label htmlFor="clientSecret" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                Client Secret
-              </label>
-              <input
-                id="clientSecret"
-                type="password"
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem'
-                }}
-                placeholder="델리버리 트래커 Client Secret을 입력하세요"
-              />
-            </div>
-          </div>
-        </section>
+        <SlackSection
+          webhookUrl={slackWebhookUrl}
+          onWebhookUrlChange={setSlackWebhookUrl}
+          onTest={handleTestSlack}
+          isTesting={testingSlack}
+        />
 
-        {/* 슬랙 설정 */}
-        <section style={{ 
-          backgroundColor: '#f8f9fa', 
-          padding: '1.5rem', 
-          borderRadius: '8px' 
-        }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>슬랙 알림 설정</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label htmlFor="slackWebhookUrl" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                슬랙 웹후크 URL
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  id="slackWebhookUrl"
-                  type="url"
-                  value={slackWebhookUrl}
-                  onChange={(e) => setSlackWebhookUrl(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '1rem'
-                  }}
-                  placeholder="https://hooks.slack.com/services/..."
-                />
-                <button
-                  type="button"
-                  onClick={handleTestSlack}
-                  disabled={testingSlack || !slackWebhookUrl.trim()}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: testingSlack || !slackWebhookUrl.trim() ? '#ccc' : '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '1rem',
-                    cursor: testingSlack || !slackWebhookUrl.trim() ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {testingSlack ? '전송 중...' : '테스트 전송'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <MonitoringSection
+          interval={monitoringInterval}
+          onIntervalChange={setMonitoringInterval}
+        />
 
-        {/* 모니터링 설정 */}
-        <section style={{ 
-          backgroundColor: '#f8f9fa', 
-          padding: '1.5rem', 
-          borderRadius: '8px' 
-        }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>모니터링 설정</h2>
-          <div>
-            <label htmlFor="monitoringInterval" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              모니터링 주기
-            </label>
-            <select
-              id="monitoringInterval"
-              value={monitoringInterval}
-              onChange={(e) => setMonitoringInterval(e.target.value as MonitoringInterval)}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem'
-              }}
-            >
-              {MONITORING_INTERVALS.map(interval => (
-                <option key={interval} value={interval}>
-                  {interval}
-                </option>
-              ))}
-            </select>
-            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
-              배송 상태를 조회하는 주기를 설정합니다.
-            </div>
-          </div>
-        </section>
+        <NotificationSection
+          notifyOnShippingDelay={notifyOnShippingDelay}
+          onNotifyOnShippingDelayChange={setNotifyOnShippingDelay}
+          notifyOnShippingStart={notifyOnShippingStart}
+          onNotifyOnShippingStartChange={setNotifyOnShippingStart}
+          notifyOnDeliveryComplete={notifyOnDeliveryComplete}
+          onNotifyOnDeliveryCompleteChange={setNotifyOnDeliveryComplete}
+          notifyOnDeliveryException={notifyOnDeliveryException}
+          onNotifyOnDeliveryExceptionChange={setNotifyOnDeliveryException}
+        />
 
-        {/* 알림 옵션 */}
-        <section style={{ 
-          backgroundColor: '#f8f9fa', 
-          padding: '1.5rem', 
-          borderRadius: '8px' 
-        }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>알림 옵션</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={notifyOnShippingDelay}
-                onChange={(e) => setNotifyOnShippingDelay(e.target.checked)}
-                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontWeight: '500' }}>출고지연 시 알림</div>
-                <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                  등록 후 48시간 이내 미출고 시 알림을 받습니다 (가장 중요)
-                </div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={notifyOnShippingStart}
-                onChange={(e) => setNotifyOnShippingStart(e.target.checked)}
-                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontWeight: '500' }}>출고 시 알림</div>
-                <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                  배송이 시작되면 알림을 받습니다.
-                </div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={notifyOnDeliveryComplete}
-                onChange={(e) => setNotifyOnDeliveryComplete(e.target.checked)}
-                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontWeight: '500' }}>배송 완료 시 알림</div>
-                <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                  배송이 완료되면 알림을 받습니다.
-                </div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={notifyOnDeliveryException}
-                onChange={(e) => setNotifyOnDeliveryException(e.target.checked)}
-                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontWeight: '500' }}>배송 예외 시 알림</div>
-                <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                  반송, 지연 등의 예외가 발생하면 알림을 받습니다.
-                </div>
-              </div>
-            </label>
-          </div>
-        </section>
-
-        {/* 자동 삭제 설정 */}
-        <section style={{ 
-          backgroundColor: '#f8f9fa', 
-          padding: '1.5rem', 
-          borderRadius: '8px' 
-        }}>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>자동 삭제 설정</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={autoDeleteCompleted}
-                onChange={(e) => setAutoDeleteCompleted(e.target.checked)}
-                style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontWeight: '500' }}>배송 완료 후 자동 삭제</div>
-                <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                  배송이 완료된 송장은 12시간 후에 자동으로 삭제됩니다.
-                </div>
-              </div>
-            </label>
-          </div>
-        </section>
+        <AutoDeleteSection
+          autoDeleteCompleted={autoDeleteCompleted}
+          onAutoDeleteCompletedChange={setAutoDeleteCompleted}
+        />
 
         {error && (
-          <div style={{ 
-            padding: '0.75rem', 
-            backgroundColor: '#fee', 
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: '#fee',
             color: '#c33',
             borderRadius: '4px'
           }}>
@@ -379,9 +178,9 @@ export default function SettingsPage() {
         )}
 
         {success && (
-          <div style={{ 
-            padding: '0.75rem', 
-            backgroundColor: '#dfd', 
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: '#dfd',
             color: '#3c3',
             borderRadius: '4px'
           }}>

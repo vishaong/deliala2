@@ -4,6 +4,8 @@ import { storage } from '../utils/storage';
 import { CARRIERS } from '../constants/carriers';
 import { Tracking } from '../types';
 import { monitorAllTrackings, intervalToMs } from '../utils/monitoring';
+import { TrackingForm } from '../components/TrackingForm';
+import { TrackingList } from '../components/TrackingList';
 
 export default function MainPage() {
   const navigate = useNavigate();
@@ -84,7 +86,7 @@ export default function MainPage() {
 
     // 여러 송장번호 파싱
     const trackingNumbers = parseTrackingNumbers(trackingNumber);
-    
+
     if (trackingNumbers.length === 0) {
       setError('유효한 송장번호를 입력해주세요.');
       return;
@@ -125,7 +127,7 @@ export default function MainPage() {
 
     setTrackings([...trackings, ...newTrackings]);
     setTrackingNumber('');
-    
+
     if (duplicates.length > 0 && newNumbers.length > 0) {
       setError(`일부 송장이 이미 등록되어 있습니다. ${newNumbers.length}개의 새 송장이 등록되었습니다.`);
       setTimeout(() => setError(''), 3000);
@@ -185,21 +187,21 @@ export default function MainPage() {
   };
 
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
       padding: 'clamp(1rem, 4vw, 2rem)',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
         marginBottom: '2rem'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1rem'
@@ -223,277 +225,24 @@ export default function MainPage() {
         </div>
       </div>
 
-      <div style={{ 
-        backgroundColor: '#f8f9fa', 
-        padding: 'clamp(1rem, 3vw, 1.5rem)', 
-        borderRadius: '8px',
-        marginBottom: '2rem'
-      }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1rem', fontSize: 'clamp(1.25rem, 3vw, 1.5rem)' }}>송장 등록</h2>
-        <form onSubmit={handleAddTracking}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            gap: '1rem'
-          }}>
-            <div>
-              <label htmlFor="carrier" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9375rem' }}>
-                택배사
-              </label>
-              <select
-                id="carrier"
-                value={selectedCarrier}
-                onChange={(e) => setSelectedCarrier(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit'
-                }}
-              >
-                {CARRIERS.map(carrier => (
-                  <option key={carrier.code} value={carrier.code}>
-                    {carrier.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <TrackingForm
+        selectedCarrier={selectedCarrier}
+        onCarrierChange={setSelectedCarrier}
+        trackingNumber={trackingNumber}
+        onTrackingNumberChange={setTrackingNumber}
+        onSubmit={handleAddTracking}
+        error={error}
+      />
 
-            <div>
-              <label htmlFor="trackingNumber" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9375rem' }}>
-                송장번호 (여러 개 입력 가능)
-              </label>
-              <textarea
-                id="trackingNumber"
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                style={{
-                  width: '100%',
-                  minHeight: '120px',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="송장번호를 입력하세요 (스페이스, 쉼표, 줄바꿈으로 구분하여 여러 개 입력 가능)"
-              />
-              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
-                여러 송장번호를 스페이스, 쉼표, 또는 줄바꿈으로 구분하여 입력할 수 있습니다.
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                padding: '0.75rem 1.5rem',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                cursor: 'pointer',
-                fontWeight: '500',
-                width: '100%',
-                maxWidth: '200px'
-              }}
-            >
-              등록
-            </button>
-          </div>
-        </form>
-
-        {error && (
-          <div style={{ 
-            marginTop: '1rem',
-            padding: '0.75rem', 
-            backgroundColor: '#fee', 
-            color: '#c33',
-            borderRadius: '4px'
-          }}>
-            {error}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          gap: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <h2 style={{ margin: 0, fontSize: 'clamp(1.25rem, 3vw, 1.5rem)' }}>
-            등록된 송장 ({trackings.length}개)
-          </h2>
-          {trackings.length > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '0.5rem', 
-              alignItems: 'center',
-              flexWrap: 'wrap'
-            }}>
-              <button
-                onClick={handleSelectAll}
-                style={{
-                  padding: '0.5rem 1rem',
-                  backgroundColor: selectedIds.size === trackings.length ? '#007bff' : '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {selectedIds.size === trackings.length ? '전체 해제' : '전체 선택'}
-              </button>
-              {selectedIds.size > 0 && (
-                <button
-                  onClick={handleDeleteSelected}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  선택 삭제 ({selectedIds.size})
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        {trackings.length === 0 ? (
-          <div style={{ 
-            padding: '3rem', 
-            textAlign: 'center', 
-            color: '#666',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px'
-          }}>
-            등록된 송장이 없습니다.
-          </div>
-        ) : (
-          <div style={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem' 
-          }}>
-            {trackings.map(tracking => {
-              const isSelected = selectedIds.has(tracking.id);
-              return (
-                <div
-                  key={tracking.id}
-                  onClick={() => handleTrackingClick(tracking.id)}
-                  style={{
-                    backgroundColor: isSelected ? '#e7f3ff' : 'white',
-                    border: isSelected ? '2px solid #007bff' : '1px solid #ddd',
-                    borderRadius: '8px',
-                    padding: 'clamp(1rem, 3vw, 1.5rem)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: isSelected ? '0 4px 8px rgba(0,123,255,0.2)' : '0 2px 4px rgba(0,0,0,0.1)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start', 
-                    marginBottom: '1rem',
-                    gap: '0.75rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        onClick={handleToggleSelect.bind(null, tracking.id)}
-                        style={{
-                          width: '1.25rem',
-                          height: '1.25rem',
-                          cursor: 'pointer',
-                          marginTop: '0.25rem',
-                          flexShrink: 0
-                        }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
-                          {tracking.carrierName}
-                        </div>
-                        <div style={{ 
-                          fontSize: 'clamp(1rem, 2.5vw, 1.125rem)', 
-                          fontWeight: '600',
-                          wordBreak: 'break-word'
-                        }}>
-                          {tracking.trackingNumber}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTracking(tracking.id);
-                      }}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        flexShrink: 0,
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                
-                {tracking.lastStatus ? (
-                  <div>
-                    <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
-                      마지막 상태
-                    </div>
-                    <div style={{ fontWeight: '500', marginBottom: '0.25rem' }}>
-                      {tracking.lastStatus.name}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                      {new Date(tracking.lastStatus.time).toLocaleString('ko-KR')}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.875rem', color: '#999' }}>
-                    상태 정보 없음
-                  </div>
-                )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <TrackingList
+        trackings={trackings}
+        selectedIds={selectedIds}
+        onSelectAll={handleSelectAll}
+        onDeleteSelected={handleDeleteSelected}
+        onToggleSelect={handleToggleSelect}
+        onDeleteTracking={handleDeleteTracking}
+        onTrackingClick={handleTrackingClick}
+      />
     </div>
   );
 }

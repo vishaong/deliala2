@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { storage } from '../utils/storage';
 import { track } from '../utils/api';
 import { Tracking, TrackInfo } from '../types';
+import { TrackingHeader } from '../components/tracking/TrackingHeader';
+import { TrackingStatusCard } from '../components/tracking/TrackingStatusCard';
+import { TrackingEventList } from '../components/tracking/TrackingEventList';
 
 export default function TrackingDetailPage() {
   const navigate = useNavigate();
@@ -26,7 +29,7 @@ export default function TrackingDetailPage() {
 
     const trackings = storage.getTrackings();
     const found = trackings.find(t => t.id === id);
-    
+
     if (!found) {
       navigate('/');
       return;
@@ -82,9 +85,9 @@ export default function TrackingDetailPage() {
   }
 
   return (
-    <div style={{ 
-      maxWidth: '800px', 
-      margin: '0 auto', 
+    <div style={{
+      maxWidth: '800px',
+      margin: '0 auto',
       padding: '2rem',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
@@ -106,26 +109,15 @@ export default function TrackingDetailPage() {
         <h1 style={{ margin: 0 }}>배송 상세 정보</h1>
       </div>
 
-      <div style={{ 
-        backgroundColor: '#f8f9fa', 
-        padding: '1.5rem', 
-        borderRadius: '8px',
-        marginBottom: '2rem'
-      }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <span style={{ color: '#666' }}>택배사: </span>
-          <strong>{tracking.carrierName}</strong>
-        </div>
-        <div>
-          <span style={{ color: '#666' }}>송장번호: </span>
-          <strong>{tracking.trackingNumber}</strong>
-        </div>
-      </div>
+      <TrackingHeader
+        carrierName={tracking.carrierName}
+        trackingNumber={tracking.trackingNumber}
+      />
 
       {error && (
-        <div style={{ 
-          padding: '1rem', 
-          backgroundColor: '#fee', 
+        <div style={{
+          padding: '1rem',
+          backgroundColor: '#fee',
           color: '#c33',
           borderRadius: '8px',
           marginBottom: '1rem'
@@ -161,68 +153,10 @@ export default function TrackingDetailPage() {
       {trackInfo && (
         <div>
           {trackInfo.lastEvent && (
-            <div style={{ 
-              backgroundColor: '#e7f3ff', 
-              padding: '1.5rem', 
-              borderRadius: '8px',
-              marginBottom: '2rem',
-              borderLeft: '4px solid #007bff'
-            }}>
-              <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
-                최신 상태
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {trackInfo.lastEvent.status.name}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
-                {new Date(trackInfo.lastEvent.time).toLocaleString('ko-KR')}
-              </div>
-              <div style={{ color: '#333' }}>
-                {trackInfo.lastEvent.description}
-              </div>
-            </div>
+            <TrackingStatusCard lastEvent={trackInfo.lastEvent} />
           )}
 
-          <div>
-            <h3 style={{ marginBottom: '1rem' }}>이벤트 내역</h3>
-            {trackInfo.events.edges.length === 0 ? (
-              <div style={{ 
-                padding: '2rem', 
-                textAlign: 'center', 
-                color: '#666',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '8px'
-              }}>
-                이벤트 내역이 없습니다.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {trackInfo.events.edges.map((edge, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      padding: '1.5rem'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                      <div style={{ fontWeight: '600', fontSize: '1.125rem' }}>
-                        {edge.node.status.name}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                        {new Date(edge.node.time).toLocaleString('ko-KR')}
-                      </div>
-                    </div>
-                    <div style={{ color: '#333', fontSize: '0.9375rem' }}>
-                      {edge.node.description}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <TrackingEventList events={trackInfo.events.edges} />
         </div>
       )}
     </div>

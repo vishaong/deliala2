@@ -1,6 +1,5 @@
 import { Credentials, TrackResponse } from '../types';
-
-const API_URL = 'https://apis.tracker.delivery/graphql';
+import { API_URL } from '../constants/api';
 
 export interface RegisterWebhookResponse {
   data: {
@@ -64,7 +63,7 @@ export async function track(
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
     throw new Error(data.errors[0]?.message || 'API 오류가 발생했습니다.');
   }
@@ -115,7 +114,7 @@ export async function registerTrackWebhook(
   }
 
   const data = await response.json();
-  
+
   if (data.errors) {
     throw new Error(data.errors[0]?.message || '웹후크 등록 오류가 발생했습니다.');
   }
