@@ -49,7 +49,7 @@ const DELIVERY_EXCEPTION_CODES = [
 // 출고 여부 확인 (이벤트 내역에서 출고 관련 이벤트가 있는지 확인)
 function hasShippingStarted(trackInfo: TrackInfo): boolean {
   // 마지막 이벤트가 출고 관련 상태인지 확인
-  if (SHIPPING_START_CODES.some(code => 
+  if (SHIPPING_START_CODES.some(code =>
     trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
     trackInfo.lastEvent.status.name.includes('출고') ||
     trackInfo.lastEvent.status.name.includes('집하') ||
@@ -60,8 +60,8 @@ function hasShippingStarted(trackInfo: TrackInfo): boolean {
   }
 
   // 이벤트 내역에서 출고 관련 이벤트 확인
-  return trackInfo.events.edges.some(edge => 
-    SHIPPING_START_CODES.some(code => 
+  return trackInfo.events.edges.some(edge =>
+    SHIPPING_START_CODES.some(code =>
       edge.node.status.code.toLowerCase().includes(code) ||
       edge.node.status.name.includes('출고') ||
       edge.node.status.name.includes('집하') ||
@@ -73,7 +73,7 @@ function hasShippingStarted(trackInfo: TrackInfo): boolean {
 
 // 배송 완료 여부 확인
 function isDeliveryComplete(trackInfo: TrackInfo): boolean {
-  return DELIVERY_COMPLETE_CODES.some(code => 
+  return DELIVERY_COMPLETE_CODES.some(code =>
     trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
     trackInfo.lastEvent.status.name.includes('배송완료') ||
     trackInfo.lastEvent.status.name.includes('완료')
@@ -82,7 +82,7 @@ function isDeliveryComplete(trackInfo: TrackInfo): boolean {
 
 // 배송 예외 여부 확인
 function isDeliveryException(trackInfo: TrackInfo): boolean {
-  return DELIVERY_EXCEPTION_CODES.some(code => 
+  return DELIVERY_EXCEPTION_CODES.some(code =>
     trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
     trackInfo.lastEvent.status.name.includes('반송') ||
     trackInfo.lastEvent.status.name.includes('지연') ||
@@ -107,6 +107,24 @@ function is12HoursPassed(completedAt: string): boolean {
   const diffMs = now.getTime() - completed.getTime();
   const diffHours = diffMs / (1000 * 60 * 60);
   return diffHours >= 12;
+}
+
+// 알림 전송 헬퍼 함수
+async function sendNotification(
+  settings: NotificationSettings,
+  type: 'shipping_delay' | 'shipping_start' | 'delivery_complete' | 'delivery_exception',
+  tracking: Tracking,
+  status: string,
+  description: string
+) {
+  const message = formatSlackMessage(
+    type,
+    tracking.carrierName,
+    tracking.trackingNumber,
+    status,
+    description
+  );
+  await sendSlackMessage(settings.slackWebhookUrl, message);
 }
 
 // 단일 송장 모니터링
@@ -155,14 +173,13 @@ export async function monitorTracking(
       is48HoursPassed(tracking.registeredAt) &&
       !hasShippingStarted(info)
     ) {
-      const message = formatSlackMessage(
+      await sendNotification(
+        settings,
         'shipping_delay',
-        tracking.carrierName,
-        tracking.trackingNumber,
+        tracking,
         info.lastEvent.status.name,
         info.lastEvent.description
       );
-      await sendSlackMessage(settings.slackWebhookUrl, message);
       updatedTracking.notifiedShippingDelay = true;
       shouldUpdate = true;
     }
@@ -174,14 +191,13 @@ export async function monitorTracking(
       !tracking.notifiedShippingStart &&
       hasShippingStarted(info)
     ) {
-      const message = formatSlackMessage(
+      await sendNotification(
+        settings,
         'shipping_start',
-        tracking.carrierName,
-        tracking.trackingNumber,
+        tracking,
         info.lastEvent.status.name,
         info.lastEvent.description
       );
-      await sendSlackMessage(settings.slackWebhookUrl, message);
       updatedTracking.notifiedShippingStart = true;
       shouldUpdate = true;
     }
@@ -201,14 +217,13 @@ export async function monitorTracking(
       !tracking.notifiedDeliveryComplete &&
       isComplete
     ) {
-      const message = formatSlackMessage(
+      await sendNotification(
+        settings,
         'delivery_complete',
-        tracking.carrierName,
-        tracking.trackingNumber,
+        tracking,
         info.lastEvent.status.name,
         info.lastEvent.description
       );
-      await sendSlackMessage(settings.slackWebhookUrl, message);
       updatedTracking.notifiedDeliveryComplete = true;
       shouldUpdate = true;
     }
@@ -220,14 +235,13 @@ export async function monitorTracking(
       !tracking.notifiedDeliveryException &&
       isDeliveryException(info)
     ) {
-      const message = formatSlackMessage(
+      await sendNotification(
+        settings,
         'delivery_exception',
-        tracking.carrierName,
-        tracking.trackingNumber,
+        tracking,
         info.lastEvent.status.name,
         info.lastEvent.description
       );
-      await sendSlackMessage(settings.slackWebhookUrl, message);
       updatedTracking.notifiedDeliveryException = true;
       shouldUpdate = true;
     }
@@ -238,6 +252,33 @@ export async function monitorTracking(
     }
   } catch (error) {
     console.error(`송장 ${tracking.trackingNumber} 모니터링 오류:`, error);
+
+    // 오류 발생 시에도 48시간 경과 체크 (미출고 알림)
+    if (
+      hasSlackWebhook &&
+      settings.notifyOnShippingDelay &&
+      !tracking.notifiedShippingDelay &&
+      is48HoursPassed(tracking.registeredAt)
+    ) {
+      try {
+        await sendNotification(
+          settings,
+          'shipping_delay',
+          tracking,
+          '정보 없음 (API 오류)',
+          '등록 후 48시간이 지났으나 배송 정보를 확인할 수 없습니다. (아직 출고되지 않았거나 송장번호가 잘못되었을 수 있습니다.)'
+        );
+
+        storage.updateTracking(tracking.id, {
+          notifiedShippingDelay: true,
+          lastCheckedAt: new Date().toISOString(),
+        });
+        return;
+      } catch (notifyError) {
+        console.error('오류 발생 시 알림 전송 실패:', notifyError);
+      }
+    }
+
     // 오류 발생 시에도 마지막 조회 시간만 업데이트
     storage.updateTracking(tracking.id, {
       lastCheckedAt: new Date().toISOString(),
@@ -248,7 +289,7 @@ export async function monitorTracking(
 // 모든 송장 모니터링
 export async function monitorAllTrackings(settings: NotificationSettings): Promise<void> {
   const trackings = storage.getTrackings();
-  
+
   if (trackings.length === 0) {
     return;
   }
@@ -274,7 +315,7 @@ export async function monitorAllTrackings(settings: NotificationSettings): Promi
 
   // 남은 송장들 모니터링
   const remainingTrackings = storage.getTrackings();
-  
+
   // 병렬로 모든 송장 모니터링 (API Rate Limit 고려하여 순차 처리도 가능)
   for (const tracking of remainingTrackings) {
     await monitorTracking(tracking, settings);
@@ -282,4 +323,3 @@ export async function monitorAllTrackings(settings: NotificationSettings): Promi
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 }
-

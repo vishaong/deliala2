@@ -7,7 +7,7 @@ export async function sendSlackMessage(webhookUrl: string, message: string): Pro
 
   try {
     // 개발 환경에서는 Vite 프록시를 사용
-    const isDevelopment = import.meta.env.DEV;
+    const isDevelopment = import.meta.env?.DEV ?? false;
     let targetUrl = webhookUrl;
 
     if (isDevelopment) {
