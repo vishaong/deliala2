@@ -46,49 +46,91 @@ const DELIVERY_EXCEPTION_CODES = [
   'return',
 ];
 
+// 한국 배송사 출고 관련 상태 (한글)
+const KOREAN_SHIPPING_START_KEYWORDS = [
+  '출고',
+  '집하',
+  '배송중',
+  '운송중',
+  '픽업완료',
+];
+
+// 한국 배송사 배송 완료 관련 상태 (한글)
+const KOREAN_DELIVERY_COMPLETE_KEYWORDS = [
+  '배송완료',
+  '완료',
+  '인수',
+];
+
+// 한국 배송사 배송 예외 관련 상태 (한글)
+const KOREAN_DELIVERY_EXCEPTION_KEYWORDS = [
+  '반송',
+  '지연',
+  '예외',
+  '미배달',
+  '보류',
+];
+
 // 출고 여부 확인 (이벤트 내역에서 출고 관련 이벤트가 있는지 확인)
 function hasShippingStarted(trackInfo: TrackInfo): boolean {
   // 마지막 이벤트가 출고 관련 상태인지 확인
-  if (SHIPPING_START_CODES.some(code =>
-    trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
-    trackInfo.lastEvent.status.name.includes('출고') ||
-    trackInfo.lastEvent.status.name.includes('집하') ||
-    trackInfo.lastEvent.status.name.includes('배송중') ||
-    trackInfo.lastEvent.status.name.includes('운송중')
-  )) {
+  const lastEventStatus = trackInfo.lastEvent.status;
+  const lastEventCode = lastEventStatus.code.toLowerCase();
+  const lastEventName = lastEventStatus.name;
+
+  // 영문 상태 코드 확인 (정확한 일치)
+  if (SHIPPING_START_CODES.includes(lastEventCode)) {
+    return true;
+  }
+
+  // 한글 상태명 확인
+  if (KOREAN_SHIPPING_START_KEYWORDS.some(keyword => lastEventName.includes(keyword))) {
     return true;
   }
 
   // 이벤트 내역에서 출고 관련 이벤트 확인
-  return trackInfo.events.edges.some(edge =>
-    SHIPPING_START_CODES.some(code =>
-      edge.node.status.code.toLowerCase().includes(code) ||
-      edge.node.status.name.includes('출고') ||
-      edge.node.status.name.includes('집하') ||
-      edge.node.status.name.includes('배송중') ||
-      edge.node.status.name.includes('운송중')
-    )
-  );
+  return trackInfo.events.edges.some(edge => {
+    const eventCode = edge.node.status.code.toLowerCase();
+    const eventName = edge.node.status.name;
+    
+    // 영문 상태 코드 확인 (정확한 일치)
+    if (SHIPPING_START_CODES.includes(eventCode)) {
+      return true;
+    }
+
+    // 한글 상태명 확인
+    return KOREAN_SHIPPING_START_KEYWORDS.some(keyword => eventName.includes(keyword));
+  });
 }
 
 // 배송 완료 여부 확인
 function isDeliveryComplete(trackInfo: TrackInfo): boolean {
-  return DELIVERY_COMPLETE_CODES.some(code =>
-    trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
-    trackInfo.lastEvent.status.name.includes('배송완료') ||
-    trackInfo.lastEvent.status.name.includes('완료')
-  );
+  const lastEventStatus = trackInfo.lastEvent.status;
+  const lastEventCode = lastEventStatus.code.toLowerCase();
+  const lastEventName = lastEventStatus.name;
+
+  // 영문 상태 코드 확인 (정확한 일치)
+  if (DELIVERY_COMPLETE_CODES.includes(lastEventCode)) {
+    return true;
+  }
+
+  // 한글 상태명 확인
+  return KOREAN_DELIVERY_COMPLETE_KEYWORDS.some(keyword => lastEventName.includes(keyword));
 }
 
 // 배송 예외 여부 확인
 function isDeliveryException(trackInfo: TrackInfo): boolean {
-  return DELIVERY_EXCEPTION_CODES.some(code =>
-    trackInfo.lastEvent.status.code.toLowerCase().includes(code) ||
-    trackInfo.lastEvent.status.name.includes('반송') ||
-    trackInfo.lastEvent.status.name.includes('지연') ||
-    trackInfo.lastEvent.status.name.includes('예외') ||
-    trackInfo.lastEvent.status.name.includes('미배달')
-  );
+  const lastEventStatus = trackInfo.lastEvent.status;
+  const lastEventCode = lastEventStatus.code.toLowerCase();
+  const lastEventName = lastEventStatus.name;
+
+  // 영문 상태 코드 확인 (정확한 일치)
+  if (DELIVERY_EXCEPTION_CODES.includes(lastEventCode)) {
+    return true;
+  }
+
+  // 한글 상태명 확인
+  return KOREAN_DELIVERY_EXCEPTION_KEYWORDS.some(keyword => lastEventName.includes(keyword));
 }
 
 // 48시간 경과 여부 확인
@@ -322,4 +364,398 @@ export async function monitorAllTrackings(settings: NotificationSettings): Promi
     // API Rate Limit을 고려하여 약간의 지연 추가
     await new Promise(resolve => setTimeout(resolve, 500));
   }
+}
+
+/**
+ * ===== 테스트 모드 함수들 (개발자 도구에서 테스트용) =====
+ * 브라우저 개발자 도구 콘솔에서 다음과 같이 호출:
+ * - window.testShippingDelayNotification()
+ * - window.testShippingStartNotification()
+ * - window.testDeliveryCompleteNotification()
+ */
+
+// 미출고 상태를 가진 목 트래킹 데이터
+export function createMockNotShippedTracking(): Tracking {
+  return {
+    id: `test-not-shipped-${Date.now()}`,
+    carrierId: 'kr.cj',
+    carrierName: 'CJ대한통운',
+    trackingNumber: `TEST-${Date.now()}`,
+    registeredAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), // 49시간 전 등록
+    notifiedShippingDelay: false,
+  };
+}
+
+// 출고 상태를 가진 목 트래킹 데이터
+export function createMockShippedTracking(): Tracking {
+  return {
+    id: `test-shipped-${Date.now()}`,
+    carrierId: 'kr.cj',
+    carrierName: 'CJ대한통운',
+    trackingNumber: `TEST-${Date.now()}`,
+    registeredAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25시간 전 등록
+    notifiedShippingStart: false,
+  };
+}
+
+// 배송완료 상태를 가진 목 트래킹 데이터
+export function createMockDeliveredTracking(): Tracking {
+  return {
+    id: `test-delivered-${Date.now()}`,
+    carrierId: 'kr.cj',
+    carrierName: 'CJ대한통운',
+    trackingNumber: `TEST-${Date.now()}`,
+    registeredAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3일 전 등록
+    completedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5시간 전 배송완료
+    notifiedDeliveryComplete: false,
+  };
+}
+
+// 배송지연/예외 상태를 가진 목 트래킹 데이터
+export function createMockDelayedTracking(): Tracking {
+  return {
+    id: `test-delayed-${Date.now()}`,
+    carrierId: 'kr.cj',
+    carrierName: 'CJ대한통운',
+    trackingNumber: `TEST-${Date.now()}`,
+    registeredAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3일 전 등록
+    notifiedDeliveryException: false,
+  };
+}
+
+// 미출고 상태 목 API 응답
+export function createMockTrackInfoNotShipped(): TrackInfo {
+  return {
+    lastEvent: {
+      time: new Date().toISOString(),
+      status: {
+        code: 'order_placed',
+        name: '주문 접수',
+      },
+      description: '상품이 준비 중입니다.',
+    },
+    events: {
+      edges: [
+        {
+          node: {
+            time: new Date().toISOString(),
+            status: {
+              code: 'order_placed',
+              name: '주문 접수',
+            },
+            description: '상품이 준비 중입니다.',
+          },
+        },
+      ],
+    },
+  };
+}
+
+// 출고 상태 목 API 응답
+export function createMockTrackInfoShipped(): TrackInfo {
+  return {
+    lastEvent: {
+      time: new Date().toISOString(),
+      status: {
+        code: 'in_transit',
+        name: '배송중',
+      },
+      description: '상품이 배송 중입니다.',
+    },
+    events: {
+      edges: [
+        {
+          node: {
+            time: new Date().toISOString(),
+            status: {
+              code: 'in_transit',
+              name: '배송중',
+            },
+            description: '상품이 배송 중입니다.',
+          },
+        },
+        {
+          node: {
+            time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            status: {
+              code: 'shipped',
+              name: '출고',
+            },
+            description: '상품이 출고되었습니다.',
+          },
+        },
+      ],
+    },
+  };
+}
+
+// 배송완료 상태 목 API 응답
+export function createMockTrackInfoDelivered(): TrackInfo {
+  return {
+    lastEvent: {
+      time: new Date().toISOString(),
+      status: {
+        code: 'delivered',
+        name: '배송완료',
+      },
+      description: '배송이 완료되었습니다.',
+    },
+    events: {
+      edges: [
+        {
+          node: {
+            time: new Date().toISOString(),
+            status: {
+              code: 'delivered',
+              name: '배송완료',
+            },
+            description: '배송이 완료되었습니다.',
+          },
+        },
+      ],
+    },
+  };
+}
+
+// 배송지연/예외 상태 목 API 응답
+export function createMockTrackInfoDelayed(): TrackInfo {
+  return {
+    lastEvent: {
+      time: new Date().toISOString(),
+      status: {
+        code: 'delayed',
+        name: '배송지연',
+      },
+      description: '배송이 지연되고 있습니다.',
+    },
+    events: {
+      edges: [
+        {
+          node: {
+            time: new Date().toISOString(),
+            status: {
+              code: 'delayed',
+              name: '배송지연',
+            },
+            description: '배송이 지연되고 있습니다.',
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * 미출고 알림 테스트 (48시간 경과 + 미출고 상태)
+ */
+export async function testShippingDelayNotification(slackWebhookUrl: string): Promise<void> {
+  const tracking = createMockNotShippedTracking();
+  const trackInfo = createMockTrackInfoNotShipped();
+  const settings: NotificationSettings = {
+    slackWebhookUrl,
+    monitoringInterval: '30분',
+    notifyOnShippingDelay: true,
+    notifyOnShippingStart: false,
+    notifyOnDeliveryComplete: false,
+    notifyOnDeliveryException: false,
+    autoDeleteCompleted: true,
+  };
+
+  try {
+    // 48시간 경과 확인
+    const registered = new Date(tracking.registeredAt);
+    const now = new Date();
+    const diffHours = (now.getTime() - registered.getTime()) / (1000 * 60 * 60);
+    console.log(`⏱️ 시간 경과: ${diffHours.toFixed(1)}시간`);
+
+    // 출고 여부 확인
+    const isShipped = hasShippingStarted(trackInfo);
+    console.log(`📦 출고 상태: ${isShipped ? '출고됨' : '미출고'}`);
+
+    if (!isShipped && diffHours >= 48) {
+      const message = formatSlackMessage(
+        'shipping_delay',
+        tracking.carrierName,
+        tracking.trackingNumber,
+        trackInfo.lastEvent.status.name,
+        trackInfo.lastEvent.description
+      );
+      console.log('📤 슬랙 메시지를 전송합니다:');
+      console.log(message);
+      await sendSlackMessage(slackWebhookUrl, message);
+      console.log('✅ 미출고 알림 전송 완료!');
+    } else {
+      if (isShipped) {
+        console.log('❌ 이미 출고되었습니다.');
+      }
+      if (diffHours < 48) {
+        console.log(`❌ 아직 48시간이 경과하지 않았습니다. (${diffHours.toFixed(1)}시간)`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ 테스트 실패:', error);
+    throw error;
+  }
+}
+
+/**
+ * 출고 알림 테스트
+ */
+export async function testShippingStartNotification(slackWebhookUrl: string): Promise<void> {
+  const tracking = createMockShippedTracking();
+  const trackInfo = createMockTrackInfoShipped();
+  const settings: NotificationSettings = {
+    slackWebhookUrl,
+    monitoringInterval: '30분',
+    notifyOnShippingDelay: true,
+    notifyOnShippingStart: true,
+    notifyOnDeliveryComplete: false,
+    notifyOnDeliveryException: false,
+    autoDeleteCompleted: true,
+  };
+
+  try {
+    const isShipped = hasShippingStarted(trackInfo);
+    console.log(`📦 출고 상태: ${isShipped ? '출고됨' : '미출고'}`);
+
+    if (isShipped && !tracking.notifiedShippingStart) {
+      const message = formatSlackMessage(
+        'shipping_start',
+        tracking.carrierName,
+        tracking.trackingNumber,
+        trackInfo.lastEvent.status.name,
+        trackInfo.lastEvent.description
+      );
+      console.log('📤 슬랙 메시지를 전송합니다:');
+      console.log(message);
+      await sendSlackMessage(slackWebhookUrl, message);
+      console.log('✅ 출고 알림 전송 완료!');
+    } else {
+      console.log('❌ 출고되지 않았거나 이미 알림이 전송되었습니다.');
+    }
+  } catch (error) {
+    console.error('❌ 테스트 실패:', error);
+    throw error;
+  }
+}
+
+/**
+ * 배송완료 알림 테스트
+ */
+export async function testDeliveryCompleteNotification(slackWebhookUrl: string): Promise<void> {
+  const tracking = createMockDeliveredTracking();
+  const trackInfo = createMockTrackInfoDelivered();
+  const settings: NotificationSettings = {
+    slackWebhookUrl,
+    monitoringInterval: '30분',
+    notifyOnShippingDelay: true,
+    notifyOnShippingStart: false,
+    notifyOnDeliveryComplete: true,
+    notifyOnDeliveryException: false,
+    autoDeleteCompleted: true,
+  };
+
+  try {
+    const isComplete = isDeliveryComplete(trackInfo);
+    console.log(`📬 배송 완료: ${isComplete ? '완료됨' : '미완료'}`);
+
+    if (isComplete && !tracking.notifiedDeliveryComplete) {
+      const message = formatSlackMessage(
+        'delivery_complete',
+        tracking.carrierName,
+        tracking.trackingNumber,
+        trackInfo.lastEvent.status.name,
+        trackInfo.lastEvent.description
+      );
+      console.log('📤 슬랙 메시지를 전송합니다:');
+      console.log(message);
+      await sendSlackMessage(slackWebhookUrl, message);
+      console.log('✅ 배송완료 알림 전송 완료!');
+    } else {
+      console.log('❌ 배송이 완료되지 않았거나 이미 알림이 전송되었습니다.');
+    }
+  } catch (error) {
+    console.error('❌ 테스트 실패:', error);
+    throw error;
+  }
+}
+
+/**
+ * 배송 예외 알림 테스트
+ */
+export async function testDeliveryExceptionNotification(slackWebhookUrl: string): Promise<void> {
+  const tracking = createMockDelayedTracking();
+  const trackInfo = createMockTrackInfoDelayed();
+  const settings: NotificationSettings = {
+    slackWebhookUrl,
+    monitoringInterval: '30분',
+    notifyOnShippingDelay: true,
+    notifyOnShippingStart: false,
+    notifyOnDeliveryComplete: false,
+    notifyOnDeliveryException: true,
+    autoDeleteCompleted: true,
+  };
+
+  try {
+    const isException = isDeliveryException(trackInfo);
+    console.log(`⚠️ 배송 예외: ${isException ? '예외 발생' : '정상'}`);
+
+    if (isException && !tracking.notifiedDeliveryException) {
+      const message = formatSlackMessage(
+        'delivery_exception',
+        tracking.carrierName,
+        tracking.trackingNumber,
+        trackInfo.lastEvent.status.name,
+        trackInfo.lastEvent.description
+      );
+      console.log('📤 슬랙 메시지를 전송합니다:');
+      console.log(message);
+      await sendSlackMessage(slackWebhookUrl, message);
+      console.log('✅ 배송예외 알림 전송 완료!');
+    } else {
+      console.log('❌ 배송 예외가 아니거나 이미 알림이 전송되었습니다.');
+    }
+  } catch (error) {
+    console.error('❌ 테스트 실패:', error);
+    throw error;
+  }
+}
+
+// 전역 window 객체에 테스트 함수 추가 (개발 모드에서만)
+if (import.meta.env.DEV) {
+  (window as any).testShippingDelayNotification = async () => {
+    const settings = storage.getNotificationSettings();
+    if (!settings?.slackWebhookUrl) {
+      console.error('❌ 슬랙 웹후크 URL이 설정되지 않았습니다. 설정 페이지에서 설정해주세요.');
+      return;
+    }
+    await testShippingDelayNotification(settings.slackWebhookUrl);
+  };
+
+  (window as any).testShippingStartNotification = async () => {
+    const settings = storage.getNotificationSettings();
+    if (!settings?.slackWebhookUrl) {
+      console.error('❌ 슬랙 웹후크 URL이 설정되지 않았습니다. 설정 페이지에서 설정해주세요.');
+      return;
+    }
+    await testShippingStartNotification(settings.slackWebhookUrl);
+  };
+
+  (window as any).testDeliveryCompleteNotification = async () => {
+    const settings = storage.getNotificationSettings();
+    if (!settings?.slackWebhookUrl) {
+      console.error('❌ 슬랙 웹후크 URL이 설정되지 않았습니다. 설정 페이지에서 설정해주세요.');
+      return;
+    }
+    await testDeliveryCompleteNotification(settings.slackWebhookUrl);
+  };
+
+  (window as any).testDeliveryExceptionNotification = async () => {
+    const settings = storage.getNotificationSettings();
+    if (!settings?.slackWebhookUrl) {
+      console.error('❌ 슬랙 웹후크 URL이 설정되지 않았습니다. 설정 페이지에서 설정해주세요.');
+      return;
+    }
+    await testDeliveryExceptionNotification(settings.slackWebhookUrl);
+  };
 }
