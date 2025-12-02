@@ -551,15 +551,6 @@ export function createMockTrackInfoDelayed(): TrackInfo {
 export async function testShippingDelayNotification(slackWebhookUrl: string): Promise<void> {
   const tracking = createMockNotShippedTracking();
   const trackInfo = createMockTrackInfoNotShipped();
-  const settings: NotificationSettings = {
-    slackWebhookUrl,
-    monitoringInterval: '30분',
-    notifyOnShippingDelay: true,
-    notifyOnShippingStart: false,
-    notifyOnDeliveryComplete: false,
-    notifyOnDeliveryException: false,
-    autoDeleteCompleted: true,
-  };
 
   try {
     // 48시간 경과 확인
@@ -604,15 +595,6 @@ export async function testShippingDelayNotification(slackWebhookUrl: string): Pr
 export async function testShippingStartNotification(slackWebhookUrl: string): Promise<void> {
   const tracking = createMockShippedTracking();
   const trackInfo = createMockTrackInfoShipped();
-  const settings: NotificationSettings = {
-    slackWebhookUrl,
-    monitoringInterval: '30분',
-    notifyOnShippingDelay: true,
-    notifyOnShippingStart: true,
-    notifyOnDeliveryComplete: false,
-    notifyOnDeliveryException: false,
-    autoDeleteCompleted: true,
-  };
 
   try {
     const isShipped = hasShippingStarted(trackInfo);
@@ -645,15 +627,6 @@ export async function testShippingStartNotification(slackWebhookUrl: string): Pr
 export async function testDeliveryCompleteNotification(slackWebhookUrl: string): Promise<void> {
   const tracking = createMockDeliveredTracking();
   const trackInfo = createMockTrackInfoDelivered();
-  const settings: NotificationSettings = {
-    slackWebhookUrl,
-    monitoringInterval: '30분',
-    notifyOnShippingDelay: true,
-    notifyOnShippingStart: false,
-    notifyOnDeliveryComplete: true,
-    notifyOnDeliveryException: false,
-    autoDeleteCompleted: true,
-  };
 
   try {
     const isComplete = isDeliveryComplete(trackInfo);
@@ -686,15 +659,6 @@ export async function testDeliveryCompleteNotification(slackWebhookUrl: string):
 export async function testDeliveryExceptionNotification(slackWebhookUrl: string): Promise<void> {
   const tracking = createMockDelayedTracking();
   const trackInfo = createMockTrackInfoDelayed();
-  const settings: NotificationSettings = {
-    slackWebhookUrl,
-    monitoringInterval: '30분',
-    notifyOnShippingDelay: true,
-    notifyOnShippingStart: false,
-    notifyOnDeliveryComplete: false,
-    notifyOnDeliveryException: true,
-    autoDeleteCompleted: true,
-  };
 
   try {
     const isException = isDeliveryException(trackInfo);
